@@ -398,11 +398,15 @@
                 this.x = nx;
                 this.y = ny;
                 this.moveCD = moveTicksFox;
-                if (prey && Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
-                  prey.die("predation");
-                  this.hunger = Math.max(0, this.hunger - eatNutritionFox);
-                  this.energy = Math.min(100, this.energy + eatGainFox);
-                  foxKills++;
+                if (prey) {
+                  let pdx = prey.x - this.x,
+                    pdy = prey.y - this.y;
+                  if (Math.abs(pdx) <= 1 && Math.abs(pdy) <= 1) {
+                    prey.die("predation");
+                    this.hunger = Math.max(0, this.hunger - eatNutritionFox);
+                    this.energy = Math.min(100, this.energy + eatGainFox);
+                    foxKills++;
+                  }
                 }
                 if (this.energy >= reproEnergyFox && this.reproCD <= 0) {
                   let p = findNearestEntity(
