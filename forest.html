@@ -398,7 +398,7 @@
                 this.x = nx;
                 this.y = ny;
                 this.moveCD = moveTicksFox;
-                if (prey && Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+                if (prey && Math.abs(prey.x - this.x) <= 1 && Math.abs(prey.y - this.y) <= 1) {
                   prey.die("predation");
                   this.hunger = Math.max(0, this.hunger - eatNutritionFox);
                   this.energy = Math.min(100, this.energy + eatGainFox);
