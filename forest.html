@@ -98,6 +98,28 @@
         const grassSpreadRatePerSec = 0.1;
         const grassSpreadProbPerTick = grassSpreadRatePerSec / ticksPerSec;
 
+        // --- Simulation parameters for animals ---
+        const visionRabbit = 6;
+        const hungerThreshRabbit = 50;
+        const moveTicksRabbit = 2;
+        const moveCostRabbit = 0.5;
+        const reproEnergyRabbit = 80;
+        const reproCostRabbit = 20;
+        const reproCDRabbit = 200;
+
+        const moveTicksFox = 2;
+        const moveCostFox = 0.6;
+        const huntRangeFox = 8;
+        const restThreshFox = 30;
+        const restGainFox = 1;
+        const eatGainFox = 40;
+        const reproEnergyFox = 90;
+        const reproCostFox = 30;
+        const reproCDFox = 250;
+
+        let rabbits = [];
+        let foxes = [];
+
         function updateGrass() {
           for (let x = 0; x < cols; x++)
             for (let y = 0; y < rows; y++) {
@@ -425,6 +447,49 @@
             }
           }
         }
+
+        // --- initialize population ---
+        const initialRabbits = 20;
+        const initialFoxes = 5;
+        for (let i = 0; i < initialRabbits; i++)
+          rabbits.push(new Rabbit(rndInt(0, cols - 1), rndInt(0, rows - 1)));
+        for (let i = 0; i < initialFoxes; i++)
+          foxes.push(new Fox(rndInt(0, cols - 1), rndInt(0, rows - 1)));
+
+        function draw() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          for (let x = 0; x < cols; x++)
+            for (let y = 0; y < rows; y++) {
+              ctx.fillStyle = grid[x][y].hasGrass ? "#2f2" : "#654";
+              ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+            }
+          ctx.fillStyle = "#fff";
+          for (let r of rabbits)
+            if (r.alive)
+              ctx.fillRect(r.x * cellSize, r.y * cellSize, cellSize, cellSize);
+          ctx.fillStyle = "#f00";
+          for (let f of foxes)
+            if (f.alive)
+              ctx.fillRect(f.x * cellSize, f.y * cellSize, cellSize, cellSize);
+        }
+
+        function step() {
+          if (paused) return;
+          updateGrass();
+          rabbits.forEach((r) => r.update());
+          foxes.forEach((f) => f.update());
+          rabbits = rabbits.filter((r) => r.alive);
+          foxes = foxes.filter((f) => f.alive);
+          tickCount++;
+          elapsed += tickInterval;
+          timeEl.textContent = (elapsed / 1000).toFixed(1);
+          dayEl.textContent = Math.floor(elapsed / dayLength) + 1;
+          rabbitCountEl.textContent = rabbits.length;
+          foxCountEl.textContent = foxes.length;
+          draw();
+        }
+
+        setInterval(step, tickInterval);
       })();
     </script>
   </body>
