@@ -1,151 +1,431 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>2D Forest Ecosystem Simulation</title>
-  <style>
-    body { margin:0; overflow:hidden; font-family:sans-serif; background:#eef; }
-    #ui {
-      position:absolute; top:10px; left:10px; z-index:10;
-      background:rgba(255,255,255,0.8); padding:8px; border-radius:4px;
-    }
-    #stats {
-      position:absolute; top:10px; right:10px; z-index:10;
-      background:rgba(255,255,255,0.9); padding:12px; border-radius:4px;
-      display:none; max-width:320px;
-    }
-    canvas { display:block; }
-    button { margin-top:6px; }
-  </style>
-</head>
-<body>
-  <div id="ui">
-    <div>Time: <span id="time">0.0</span>s Day: <span id="day">1</span></div>
-    <div>Rabbits: <span id="rabbitCount">0</span> Foxes: <span id="foxCount">0</span></div>
-    <button id="togglePause">Pause</button>
-  </div>
-
-  <div id="stats">
-    <h2>Simulation Statistics</h2>
-    <div id="statsContent"></div>
-  </div>
-
-  <canvas id="canvas"></canvas>
-
-  <script>
-  (() => {
-    const canvas = document.getElementById('canvas');
-    const ctx    = canvas.getContext('2d');
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    const cellSize = 10;
-    const cols = Math.floor(canvas.width / cellSize);
-    const rows = Math.floor(canvas.height / cellSize);
-
-    const tickInterval   = 100;
-    const dayLength      = 60000;
-    const simDuration    = 5 * dayLength;
-    const ticksPerSec    = 1000 / tickInterval;
-    const totalTicks     = simDuration / tickInterval;
-    let tickCount = 0, elapsed = 0, paused = false;
-
-    const timeEl         = document.getElementById('time');
-    const dayEl          = document.getElementById('day');
-    const rabbitCountEl  = document.getElementById('rabbitCount');
-    const foxCountEl     = document.getElementById('foxCount');
-    const togglePauseBtn = document.getElementById('togglePause');
-    togglePauseBtn.onclick = () => {
-      paused = !paused;
-      togglePauseBtn.textContent = paused ? 'Resume' : 'Pause';
-    };
-
-    const grid = [];
-    for (let x=0; x<cols; x++){
-      grid[x] = [];
-      for (let y=0; y<rows; y++){
-        grid[x][y] = { hasGrass: Math.random()<0.5, regrowth:0 };
+  <head>
+    <meta charset="UTF-8" />
+    <title>2D Forest Ecosystem Simulation</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: sans-serif;
+        background: #eef;
       }
-    }
-    const grassRegrowthSecs       = 10;
-    const grassRegrowthTicks      = grassRegrowthSecs * ticksPerSec;
-    const grassNutrition          = 20;
-    const grassEnergyGain         = 10;
-    const grassSpreadRatePerSec   = 0.1;
-    const grassSpreadProbPerTick  = grassSpreadRatePerSec / ticksPerSec;
+      #ui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 8px;
+        border-radius: 4px;
+      }
+      #stats {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 12px;
+        border-radius: 4px;
+        display: none;
+        max-width: 320px;
+      }
+      canvas {
+        display: block;
+      }
+      button {
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui">
+      <div>Time: <span id="time">0.0</span>s Day: <span id="day">1</span></div>
+      <div>
+        Rabbits: <span id="rabbitCount">0</span> Foxes:
+        <span id="foxCount">0</span>
+      </div>
+      <button id="togglePause">Pause</button>
+    </div>
 
-    function updateGrass(){
-      for (let x=0;x<cols;x++)for(let y=0;y<rows;y++){
-        const c = grid[x][y];
-        if (!c.hasGrass){
-          if (c.regrowth>0 && --c.regrowth===0) c.hasGrass=true;
-        } else {
-          for (let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-            if (dx||dy){
-              let nx=x+dx, ny=y+dy;
-              if (nx>=0&&nx<cols&&ny>=0&&ny<rows){
-                let n = grid[nx][ny];
-                if (!n.hasGrass && n.regrowth===0 && Math.random()<grassSpreadProbPerTick){
-                  n.hasGrass=true;
+    <div id="stats">
+      <h2>Simulation Statistics</h2>
+      <div id="statsContent"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+      (() => {
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const cellSize = 10;
+        const cols = Math.floor(canvas.width / cellSize);
+        const rows = Math.floor(canvas.height / cellSize);
+
+        const tickInterval = 100;
+        const dayLength = 60000;
+        const simDuration = 5 * dayLength;
+        const ticksPerSec = 1000 / tickInterval;
+        const totalTicks = simDuration / tickInterval;
+        let tickCount = 0,
+          elapsed = 0,
+          paused = false;
+
+        const timeEl = document.getElementById("time");
+        const dayEl = document.getElementById("day");
+        const rabbitCountEl = document.getElementById("rabbitCount");
+        const foxCountEl = document.getElementById("foxCount");
+        const togglePauseBtn = document.getElementById("togglePause");
+        togglePauseBtn.onclick = () => {
+          paused = !paused;
+          togglePauseBtn.textContent = paused ? "Resume" : "Pause";
+        };
+
+        const grid = [];
+        for (let x = 0; x < cols; x++) {
+          grid[x] = [];
+          for (let y = 0; y < rows; y++) {
+            grid[x][y] = { hasGrass: Math.random() < 0.5, regrowth: 0 };
+          }
+        }
+        const grassRegrowthSecs = 10;
+        const grassRegrowthTicks = grassRegrowthSecs * ticksPerSec;
+        const grassNutrition = 20;
+        const grassEnergyGain = 10;
+        const grassSpreadRatePerSec = 0.1;
+        const grassSpreadProbPerTick = grassSpreadRatePerSec / ticksPerSec;
+
+        function updateGrass() {
+          for (let x = 0; x < cols; x++)
+            for (let y = 0; y < rows; y++) {
+              const c = grid[x][y];
+              if (!c.hasGrass) {
+                if (c.regrowth > 0 && --c.regrowth === 0) c.hasGrass = true;
+              } else {
+                for (let dx = -1; dx <= 1; dx++)
+                  for (let dy = -1; dy <= 1; dy++) {
+                    if (dx || dy) {
+                      let nx = x + dx,
+                        ny = y + dy;
+                      if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+                        let n = grid[nx][ny];
+                        if (
+                          !n.hasGrass &&
+                          n.regrowth === 0 &&
+                          Math.random() < grassSpreadProbPerTick
+                        ) {
+                          n.hasGrass = true;
+                        }
+                      }
+                    }
+                  }
+              }
+            }
+        }
+
+        const sign = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const rndInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+        const directions = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+          { x: 1, y: 1 },
+          { x: 1, y: -1 },
+          { x: -1, y: 1 },
+          { x: -1, y: -1 },
+        ];
+        function findNearestEntity(x, y, list, range, filter = () => true) {
+          let best = null,
+            bd = 1e9;
+          for (let e of list)
+            if (e.alive && filter(e)) {
+              let d = Math.abs(e.x - x) + Math.abs(e.y - y);
+              if (d <= range && d < bd) {
+                bd = d;
+                best = e;
+              }
+            }
+          return best;
+        }
+        function findNearestGrass(x, y, range) {
+          let best = null,
+            bd = 1e9;
+          for (
+            let i = Math.max(0, x - range);
+            i <= Math.min(cols - 1, x + range);
+            i++
+          ) {
+            for (
+              let j = Math.max(0, y - range);
+              j <= Math.min(rows - 1, y + range);
+              j++
+            ) {
+              if (grid[i][j].hasGrass) {
+                let d = Math.abs(i - x) + Math.abs(j - y);
+                if (d < bd) {
+                  bd = d;
+                  best = { x: i, y: j };
                 }
               }
             }
           }
+          return best;
         }
-      }
-    }
+        function findEmptyNeighbor(x, y) {
+          let choices = [];
+          for (let dx = -1; dx <= 1; dx++)
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx || dy) {
+                let nx = x + dx,
+                  ny = y + dy;
+                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows)
+                  choices.push({ x: nx, y: ny });
+              }
+            }
+          return choices.length ? choices[rndInt(0, choices.length - 1)] : null;
+        }
 
-    const sign    = v => v>0?1:v<0?-1:0;
-    const clamp   = (v,a,b) => Math.max(a,Math.min(b,v));
-    const rndInt  = (a,b)=>(Math.floor(Math.random()*(b-a+1))+a);
-    const directions = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1},{x:1,y:1},{x:1,y:-1},{x:-1,y:1},{x:-1,y:-1}];
-    function findNearestEntity(x,y,list,range,filter=()=>true){
-      let best=null,bd=1e9;
-      for (let e of list) if(e.alive && filter(e)){
-        let d = Math.abs(e.x-x)+Math.abs(e.y-y);
-        if (d<=range && d<bd){ bd=d; best=e; }
-      }
-      return best;
-    }
-    function findNearestGrass(x,y,range){
-      let best=null,bd=1e9;
-      for (let i=Math.max(0,x-range); i<=Math.min(cols-1,x+range); i++){
-        for (let j=Math.max(0,y-range); j<=Math.min(rows-1,y+range); j++){
-          if (grid[i][j].hasGrass){
-            let d = Math.abs(i-x)+Math.abs(j-y);
-            if (d<bd){ bd=d; best={x:i,y:j}; }
+        let rabbitHistory = [],
+          foxHistory = [];
+        let deadRabbits = [],
+          deadFoxes = [];
+        let rabbitStarve = 0,
+          rabbitExh = 0,
+          rabbitPred = 0;
+        let foxStarve = 0,
+          foxExh = 0;
+        let rabbitsBorn = 0,
+          foxesBorn = 0,
+          foxKills = 0;
+
+        class Rabbit {
+          constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.hunger = 0;
+            this.energy = 100;
+            this.birthTick = tickCount;
+            this.alive = true;
+            this.reproCD = 0;
+            this.moveCD = 0;
+          }
+          die(c) {
+            this.alive = false;
+            deadRabbits.push({ life: tickCount - this.birthTick, cause: c });
+            if (c === "starvation") rabbitStarve++;
+            else if (c === "exhaustion") rabbitExh++;
+            else if (c === "predation") rabbitPred++;
+          }
+          update() {
+            if (!this.alive) return;
+            this.hunger += 0.005 * tickInterval;
+            this.energy -= 0.002 * tickInterval;
+            if (this.reproCD > 0) this.reproCD--;
+            if (this.hunger >= 100) {
+              this.die("starvation");
+              return;
+            }
+            if (this.energy <= 0) {
+              this.energy = 0;
+              this.die("exhaustion");
+              return;
+            }
+            let dx = 0,
+              dy = 0;
+            let fox = findNearestEntity(this.x, this.y, foxes, visionRabbit);
+            if (fox) {
+              dx = this.x - fox.x;
+              dy = this.y - fox.y;
+            } else if (this.hunger >= hungerThreshRabbit) {
+              let g = findNearestGrass(this.x, this.y, visionRabbit);
+              if (g) {
+                dx = g.x - this.x;
+                dy = g.y - this.y;
+              }
+            } else if (this.energy >= reproEnergyRabbit && this.reproCD <= 0) {
+              let mate = findNearestEntity(
+                this.x,
+                this.y,
+                rabbits,
+                visionRabbit,
+                (r) => r !== this && r.reproCD <= 0,
+              );
+              if (mate) {
+                dx = mate.x - this.x;
+                dy = mate.y - this.y;
+              }
+            }
+            if (!dx && !dy) {
+              if (Math.random() < 0.02) {
+                let d = directions[rndInt(0, directions.length - 1)];
+                dx = d.x;
+                dy = d.y;
+              } else return;
+            }
+            let sx = sign(dx),
+              sy = sign(dy);
+            if (this.moveCD <= 0) {
+              let nx = clamp(this.x + sx, 0, cols - 1),
+                ny = clamp(this.y + sy, 0, rows - 1);
+              this.x = nx;
+              this.y = ny;
+              this.moveCD = moveTicksRabbit;
+              let cell = grid[nx][ny];
+              if (cell.hasGrass) {
+                cell.hasGrass = false;
+                cell.regrowth = grassRegrowthTicks;
+                this.hunger = Math.max(0, this.hunger - grassNutrition);
+                this.energy = Math.min(100, this.energy + grassEnergyGain);
+              }
+              if (this.energy >= reproEnergyRabbit && this.reproCD <= 0) {
+                let p = findNearestEntity(
+                  nx,
+                  ny,
+                  rabbits,
+                  1,
+                  (o) => o !== this && o.reproCD <= 0,
+                );
+                if (p) {
+                  let spot = findEmptyNeighbor(nx, ny);
+                  if (spot) {
+                    rabbits.push(new Rabbit(spot.x, spot.y));
+                    rabbitsBorn++;
+                    this.energy -= reproCostRabbit;
+                    p.energy -= reproCostRabbit;
+                    this.reproCD = reproCDRabbit;
+                    p.reproCD = reproCDRabbit;
+                  }
+                }
+              }
+              this.energy -= moveCostRabbit;
+              if (this.energy <= 0) {
+                this.energy = 0;
+                this.die("exhaustion");
+                return;
+              }
+            } else this.moveCD--;
           }
         }
-      }
-      return best;
-    }
-    function findEmptyNeighbor(x,y){
-      let choices=[];
-      for (let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-        if (dx||dy){
-          let nx=x+dx, ny=y+dy;
-          if (nx>=0&&nx<cols&&ny>=0&&ny<rows) choices.push({x:nx,y:ny});
+
+        class Fox {
+          constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.hunger = 0;
+            this.energy = 100;
+            this.birthTick = tickCount;
+            this.alive = true;
+            this.reproCD = 0;
+            this.moveCD = 0;
+          }
+          die(c) {
+            this.alive = false;
+            deadFoxes.push({ life: tickCount - this.birthTick, cause: c });
+            if (c === "starvation") foxStarve++;
+            else if (c === "exhaustion") foxExh++;
+          }
+          update() {
+            if (!this.alive) return;
+            this.hunger += 0.007 * tickInterval;
+            this.energy -= 0.003 * tickInterval;
+            if (this.reproCD > 0) this.reproCD--;
+            if (this.hunger >= 100) {
+              this.die("starvation");
+              return;
+            }
+            if (this.energy <= 0) {
+              this.energy = 0;
+              this.die("exhaustion");
+              return;
+            }
+            let tx, ty;
+            let prey = findNearestEntity(this.x, this.y, rabbits, huntRangeFox);
+            if (prey) {
+              tx = prey.x;
+              ty = prey.y;
+            } else if (this.energy <= restThreshFox) {
+              this.energy = Math.min(100, this.energy + restGainFox);
+              return;
+            } else if (this.energy >= reproEnergyFox && this.reproCD <= 0) {
+              let mate = findNearestEntity(
+                this.x,
+                this.y,
+                foxes,
+                huntRangeFox,
+                (f) => f !== this && f.reproCD <= 0,
+              );
+              if (mate) {
+                tx = mate.x;
+                ty = mate.y;
+              }
+            }
+            if (tx !== undefined) {
+              let dx = tx - this.x,
+                dy = ty - this.y,
+                sx = sign(dx),
+                sy = sign(dy);
+              if (this.moveCD <= 0) {
+                let nx = clamp(this.x + sx, 0, cols - 1),
+                  ny = clamp(this.y + sy, 0, rows - 1);
+                this.x = nx;
+                this.y = ny;
+                this.moveCD = moveTicksFox;
+                if (prey && Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+                  prey.die("predation");
+                  this.energy = Math.min(100, this.energy + eatGainFox);
+                  foxKills++;
+                }
+                if (this.energy >= reproEnergyFox && this.reproCD <= 0) {
+                  let p = findNearestEntity(
+                    nx,
+                    ny,
+                    foxes,
+                    1,
+                    (o) => o !== this && o.reproCD <= 0,
+                  );
+                  if (p) {
+                    let spot = findEmptyNeighbor(nx, ny);
+                    if (spot) {
+                      foxes.push(new Fox(spot.x, spot.y));
+                      foxesBorn++;
+                      this.energy -= reproCostFox;
+                      p.energy -= reproCostFox;
+                      this.reproCD = reproCDFox;
+                      p.reproCD = reproCDFox;
+                    }
+                  }
+                }
+                this.energy -= moveCostFox;
+                if (this.energy <= 0) {
+                  this.energy = 0;
+                  this.die("exhaustion");
+                  return;
+                }
+              } else this.moveCD--;
+            } else {
+              if (this.moveCD <= 0 && Math.random() < 0.2) {
+                let d = directions[rndInt(0, directions.length - 1)];
+                let nx = clamp(this.x + d.x, 0, cols - 1),
+                  ny = clamp(this.y + d.y, 0, rows - 1);
+                this.x = nx;
+                this.y = ny;
+                this.moveCD = moveTicksFox;
+                this.energy -= moveCostFox;
+                if (this.energy <= 0) {
+                  this.energy = 0;
+                  this.die("exhaustion");
+                  return;
+                }
+              } else this.moveCD--;
+            }
+          }
         }
-      }
-      return choices.length ? choices[rndInt(0,choices.length-1)] : null;
-    }
-
-    let rabbitHistory = [], foxHistory = [];
-    let deadRabbits = [], deadFoxes = [];
-    let rabbitStarve=0, rabbitExh=0, rabbitPred=0;
-    let foxStarve=0, foxExh=0;
-    let rabbitsBorn=0, foxesBorn=0, foxKills=0;
-
-    class Rabbit {
-      constructor(x,y){this.x=x; this.y=y; this.hunger=0; this.energy=100; this.birthTick=tickCount; this.alive=true; this.reproCD=0; this.moveCD=0;}
-      die(c){this.alive=false; deadRabbits.push({life: tickCount - this.birthTick, cause:c}); if(c==='starvation') rabbitStarve++; else if(c==='exhaustion') rabbitExh++; else if(c==='predation') rabbitPred++;}
-      update(){ if(!this.alive) return; this.hunger+=0.005*tickInterval; this.energy-=0.002*tickInterval; if(this.reproCD>0)this.reproCD--; if(this.hunger>=100){this.die('starvation');return;} if(this.energy<=0){this.energy=0;this.die('exhaustion');return;} let dx=0,dy=0; let fox=findNearestEntity(this.x,this.y,foxes,visionRabbit); if(fox){dx=this.x-fox.x;dy=this.y-fox.y;} else if(this.hunger>=hungerThreshRabbit){let g=findNearestGrass(this.x,this.y,visionRabbit); if(g){dx=g.x-this.x;dy=g.y-this.y;}} else if(this.energy>=reproEnergyRabbit&&this.reproCD<=0){let mate=findNearestEntity(this.x,this.y,rabbits,visionRabbit,r=>r!==this&&r.reproCD<=0); if(mate){dx=mate.x-this.x; dy=mate.y-this.y;}} if(!dx&&!dy){if(Math.random()<0.02){let d=directions[rndInt(0,directions.length-1)];dx=d.x;dy=d.y;} else return;} let sx=sign(dx), sy=sign(dy); if(this.moveCD<=0){let nx=clamp(this.x+sx,0,cols-1), ny=clamp(this.y+sy,0,rows-1); this.x=nx; this.y=ny; this.moveCD=moveTicksRabbit; let cell=grid[nx][ny]; if(cell.hasGrass){cell.hasGrass=false;cell.regrowth=grassRegrowthTicks; this.hunger=Math.max(0,this.hunger-grassNutrition); this.energy=Math.min(100,this.energy+grassEnergyGain);} if(this.energy>=reproEnergyRabbit&&this.reproCD<=0){let p=findNearestEntity(nx,ny,rabbits,1,o=>o!==this&&o.reproCD<=0); if(p){let spot=findEmptyNeighbor(nx,ny); if(spot){rabbits.push(new Rabbit(spot.x,spot.y)); rabbitsBorn++; this.energy-=reproCostRabbit; p.energy-=reproCostRabbit; this.reproCD=reproCDRabbit; p.reproCD=reproCDRabbit;}}} this.energy-=moveCostRabbit; if(this.energy<=0){this.energy=0;this.die('exhaustion');return;}}else this.moveCD--; }
-    }
-
-    class Fox {
-      constructor(x,y){this.x=x; this.y=y; this.hunger=0; this.energy=100; this.birthTick=tickCount; this.alive=true; this.reproCD=0; this.moveCD=0;}
-      die(c){this.alive=false; deadFoxes.push({life: tickCount - this.birthTick, cause:c}); if(c==='starvation') foxStarve++; else if(c==='exhaustion') foxExh++;}
-      update(){ if(!this.alive) return; this.hunger+=0.007*tickInterval; this.energy-=0.003*tickInterval; if(this.reproCD>0)this.reproCD--; if(this.hunger>=100){this.die('starvation');return;} if(this.energy<=0){this.energy=0;this.die('exhaustion');return;} let tx,ty; let prey=findNearestEntity(this.x,this.y,rabbits,huntRangeFox); if(prey){tx=prey.x; ty=prey.y;} else if(this.energy<=restThreshFox){this.energy=Math.min(100,this.energy+restGainFox);return;} else if(this.energy>=reproEnergyFox&&this.reproCD<=0){let mate=findNearestEntity(this.x,this.y,foxes,huntRangeFox,f=>f!==this&&f.reproCD<=0); if(mate){tx=mate.x; ty=mate.y;}} if(tx!==undefined){let dx=tx-this.x, dy=ty-this.y, sx=sign(dx), sy=sign(dy); if(this.moveCD<=0){let nx=clamp(this.x+sx,0,cols-1), ny=clamp(this.y+sy,0,rows-1); this.x=nx; this.y=ny; this.moveCD=moveTicksFox; if(prey&&Math.abs(dx)<=1&&Math.abs(dy)<=1){prey.die('predation'); this.energy=Math.min(100,this.energy+eatGainFox); foxKills++;} if(this.energy>=reproEnergyFox&&this.reproCD<=0){let p=findNearestEntity(nx,ny,foxes,1,o=>o!==this&&o.reproCD<=0); if(p){let spot=findEmptyNeighbor(nx,ny); if(spot){foxes.push(new Fox(spot.x,spot.y)); foxesBorn++; this.energy-=reproCostFox; p.energy-=reproCostFox; this.reproCD=reproCDFox; p.reproCD=reproCDFox;}}} this.energy-=moveCostFox; if(this.energy<=0){this.energy=0; this.die('exhaustion'); return;}}else this.moveCD--;}else{ if(this.moveCD<=0&&Math.random()<0.2){let d=directions[rndInt(0,directions.length-1)]; let nx=clamp(this.x+d.x,0,cols-1), ny=clamp(this.y+d.y,0,rows-1); this.x=nx; this.y=ny; this.moveCD=moveTicksFox; this.energy-=moveCostFox; if(this.energy<=0){this.energy=0;this.die('exhaustion');return;}}else this.moveCD--;}} }})();
-</script>
-</body>
+      })();
+    </script>
+  </body>
 </html>
-
